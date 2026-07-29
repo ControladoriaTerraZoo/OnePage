@@ -1,23 +1,39 @@
 #!/usr/bin/env python3
 """
-Gera o relatório "One Page" (Consolidado / Varejo / Atacado) a partir do
-arquivo "DRE Aberta Mensal" exportado da planilha DRE Banco (Google Sheets).
+Gera o relatório "One Page" (Consolidado / Varejo / Atacado) a partir da
+DRE Banco (Google Sheets) e, opcionalmente, de uma DRE do Atacado à parte
+(base Lynkz Gerencial Consolidado).
 
 Uso:
     python3 scripts/generate_dre_report.py \
         --file data/DRE_Aberta_Mensal.xlsx \
+        --atacado-file data/DRE_Atacado.xlsx \
         --year 2026 --months 1-6 \
         --compare-year 2025 --compare-months 1-6 \
         --label "6 M/2026" \
         --slide-number 3 \
         --output reports/one-page-6M-2026.html
 
-Como exportar a planilha do Google Sheets antes de rodar o script:
+Como exportar as planilhas do Google Sheets antes de rodar o script:
     Arquivo > Fazer download > Microsoft Excel (.xlsx)
     Salve em data/DRE_Aberta_Mensal.xlsx (ou outro caminho e use --file).
 
-O arquivo precisa ter uma aba por ano (ex: "2025", "2026", ...) com as colunas:
+O arquivo da DRE Banco precisa ter uma aba por ano (ex: "2025", "2026", ...)
+com as colunas:
     Mês Ano | Loja | Canal | DRE | -<ano> | Orçado -<ano>
+
+O arquivo --atacado-file (Lynkz Gerencial Consolidado) tem uma única aba já
+totalizada no período, com colunas de cabeçalho contendo "Real <label>" para
+o período atual e o período de comparação (ex: "Real 6M/2026", "Real
+6M/2025"), e linhas com os mesmos nomes de métrica da DRE Banco (Receita
+Bruta, Receita Líquida, Lucro Bruto Ajustado, EBITDA). Como esse arquivo já
+vem pré-totalizado para um período fixo, ele precisa ser reexportado do
+Lynkz a cada novo período (6M, 9M, 12M...) — não é possível recalcular
+meses arbitrários a partir dele como é feito com a DRE Banco.
+
+Se --atacado-file não for informado, o Atacado é calculado a partir do
+Canal "ATACADO" da própria DRE Banco (aproximação contábil, que pode
+divergir do Lynkz Gerencial Consolidado usado no One Page oficial).
 """
 
 import argparse
@@ -38,12 +54,11 @@ TOP_LEVEL_METRICS = {
 SEGMENTS = {
     "Consolidado": None,
     "Varejo": {"VAREJO"},
-    "Atacado": {"ATACADO"},
 }
 
 # Nota exibida no relatório: a coluna Atacado do One Page oficial usa a base
 # "Lynkz Gerencial Consolidado", que pode diferir da aba ATACADO da DRE Banco
-# (contábil). Ajuste/remova esta nota se a fonte do Atacado mudar.
+# (contábil).
 ATACADO_NOTE = "Atacado: Lynkz Gerencial Consolidado"
 
 
@@ -97,6 +112,10 @@ def compute_segment_metrics(rows, months, canais):
         key: sum_metric(rows, months, label, canais)
         for key, label in TOP_LEVEL_METRICS.items()
     }
+    return _finalize_metrics(values)
+
+
+def _finalize_metrics(values):
     receita_liquida = values["receita_liquida"]
     values["margem_bruta"] = (
         values["lucro_bruto_ajustado"] / receita_liquida if receita_liquida else 0.0
@@ -105,6 +124,52 @@ def compute_segment_metrics(rows, months, canais):
         values["ebitda"] / receita_liquida if receita_liquida else 0.0
     )
     return values
+
+
+def _find_period_column(header, year):
+    year_str = str(year)
+    for idx, cell in enumerate(header):
+        if not cell:
+            continue
+        text = str(cell).upper().replace(" ", "")
+        if "REAL" in text and year_str in text:
+            return idx
+    return None
+
+
+def load_atacado_totals(path, year, compare_year):
+    """Lê a DRE do Atacado (Lynkz Gerencial Consolidado), já totalizada por
+    período, e devolve (metrics_atual, metrics_comparacao)."""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    ws = wb[wb.sheetnames[0]]
+    rows = list(ws.iter_rows(min_row=1, values_only=True))
+    header = rows[0]
+
+    curr_col = _find_period_column(header, year)
+    prev_col = _find_period_column(header, compare_year)
+    if curr_col is None or prev_col is None:
+        raise SystemExit(
+            f"Não encontrei colunas 'Real ...{year}' e 'Real ...{compare_year}' "
+            f"no arquivo do Atacado. Cabeçalho encontrado: {header}. "
+            "Reexporte a DRE do Atacado (Lynkz) para o período desejado."
+        )
+
+    curr_values = {}
+    prev_values = {}
+    for row in rows[1:]:
+        if not row or row[0] is None:
+            continue
+        label = str(row[0]).strip()
+        for key, metric_label in TOP_LEVEL_METRICS.items():
+            if label == metric_label:
+                curr_values[key] = row[curr_col] or 0.0
+                prev_values[key] = row[prev_col] or 0.0
+
+    missing = [m for m in TOP_LEVEL_METRICS if m not in curr_values]
+    if missing:
+        raise SystemExit(f"Métricas não encontradas na DRE do Atacado: {missing}")
+
+    return _finalize_metrics(curr_values), _finalize_metrics(prev_values)
 
 
 def variance(curr, prev):
@@ -324,6 +389,12 @@ PAGE_TEMPLATE = """<!doctype html>
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--file", required=True, help="Caminho do .xlsx exportado da DRE Banco")
+    parser.add_argument(
+        "--atacado-file",
+        default=None,
+        help="Caminho do .xlsx da DRE do Atacado (Lynkz Gerencial Consolidado). "
+        "Se omitido, usa o Canal=ATACADO da DRE Banco como aproximação.",
+    )
     parser.add_argument("--year", type=int, required=True, help="Ano do período atual (ex: 2026)")
     parser.add_argument("--months", required=True, help="Meses do período atual, ex: 1-6")
     parser.add_argument("--compare-year", type=int, required=True, help="Ano do período de comparação (ex: 2025)")
@@ -349,9 +420,18 @@ def main():
     for name, canais in SEGMENTS.items():
         curr = compute_segment_metrics(curr_rows, months, canais)
         prev = compute_segment_metrics(prev_rows, compare_months, canais)
-        sections[name] = build_segment_html(
-            name, curr, prev, compare_label, show_note=(name == "Atacado")
+        sections[name] = build_segment_html(name, curr, prev, compare_label)
+
+    if args.atacado_file:
+        curr_atacado, prev_atacado = load_atacado_totals(
+            args.atacado_file, args.year, args.compare_year
         )
+    else:
+        curr_atacado = compute_segment_metrics(curr_rows, months, {"ATACADO"})
+        prev_atacado = compute_segment_metrics(prev_rows, compare_months, {"ATACADO"})
+    sections["Atacado"] = build_segment_html(
+        "Atacado", curr_atacado, prev_atacado, compare_label, show_note=True
+    )
 
     html = PAGE_TEMPLATE.format(
         label=args.label,

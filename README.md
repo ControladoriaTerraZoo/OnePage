@@ -1,16 +1,18 @@
 # One Page
 
 Gera o relatório "One Page" (Consolidado / Varejo / Atacado) a partir da
-planilha **DRE Banco** (Google Sheets), no mesmo formato do modelo usado nas
-apresentações mensais.
+planilha **DRE Banco** (Google Sheets) e da **DRE do Atacado** (Lynkz
+Gerencial Consolidado), no mesmo formato do modelo usado nas apresentações
+mensais.
 
-Planilha de origem: [DRE Banco](https://docs.google.com/spreadsheets/d/1qYlMyLFWbtqkGw7ingnFFAilDDYxDwzun0TGs8lBMr0)
+Planilha de origem (Varejo/Consolidado): [DRE Banco](https://docs.google.com/spreadsheets/d/1qYlMyLFWbtqkGw7ingnFFAilDDYxDwzun0TGs8lBMr0)
 
 ## Como funciona
 
-O script lê a aba "DRE Aberta Mensal" (uma aba por ano, ex: `2025`, `2026`,
-...) com as colunas `Mês Ano | Loja | Canal | DRE | -<ano> | Orçado -<ano>` e
-calcula, para o período informado:
+O script lê a aba "DRE Aberta Mensal" da DRE Banco (uma aba por ano, ex:
+`2025`, `2026`, ...) com as colunas
+`Mês Ano | Loja | Canal | DRE | -<ano> | Orçado -<ano>` e calcula, para o
+período informado:
 
 - **Receita Bruta**
 - **Lucro Bruto Ajustado**
@@ -20,26 +22,30 @@ calcula, para o período informado:
 
 para três recortes:
 
-| Coluna do relatório | Filtro na DRE Banco |
+| Coluna do relatório | Fonte |
 |---|---|
-| Consolidado | soma de todos os canais (Varejo, Atacado, Corporativo, CD-Logística, Produção) |
-| Varejo | Canal = `VAREJO` |
-| Atacado | Canal = `ATACADO` |
+| Consolidado | soma de todos os canais da DRE Banco (Varejo, Atacado, Corporativo, CD-Logística, Produção) |
+| Varejo | Canal = `VAREJO` na DRE Banco |
+| Atacado | DRE do Atacado (Lynkz Gerencial Consolidado) — arquivo `--atacado-file` |
 
 Cada métrica é comparada com o mesmo período do ano anterior (variação % e
 R$, e variação em p.p. para as margens). Valores positivos aparecem em verde
 e negativos em vermelho, igual ao modelo original.
 
 > **Nota sobre o Atacado:** o One Page oficial usa como fonte do Atacado o
-> **Lynkz Gerencial Consolidado**, que pode divergir da aba `ATACADO` da DRE
-> Banco (contábil). O script usa a DRE Banco por ser a fonte disponível; se
-> a base do Lynkz também estiver disponível em planilha, ela pode ser
-> plugada no lugar do filtro `Canal = ATACADO` em `SEGMENTS` no script.
+> **Lynkz Gerencial Consolidado**, que diverge da aba `ATACADO` da DRE Banco
+> (contábil). Por isso o script lê o Atacado de um arquivo separado
+> (`--atacado-file`), já totalizado no período (ex: "Real 6M/2026" vs "Real
+> 6M/2025"). Sem esse arquivo, o script cai de volta para o Canal=`ATACADO`
+> da DRE Banco, como aproximação.
 
 ## Uso
 
-1. No Google Sheets, exporte a planilha: `Arquivo > Fazer download >
-   Microsoft Excel (.xlsx)` e salve em `data/DRE_Aberta_Mensal.xlsx`
+1. No Google Sheets, exporte as planilhas:
+   `Arquivo > Fazer download > Microsoft Excel (.xlsx)`
+   - DRE Banco → salve em `data/DRE_Aberta_Mensal.xlsx`
+   - DRE do Atacado (Lynkz) → salve em `data/DRE_Atacado.xlsx`
+
    (a pasta `data/` não é versionada no git, pois contém dados financeiros
    por loja).
 
@@ -48,6 +54,7 @@ e negativos em vermelho, igual ao modelo original.
    ```bash
    python3 scripts/generate_dre_report.py \
      --file data/DRE_Aberta_Mensal.xlsx \
+     --atacado-file data/DRE_Atacado.xlsx \
      --year 2026 --months 1-6 \
      --compare-year 2025 --compare-months 1-6 \
      --label "6 M/2026" \
@@ -60,11 +67,15 @@ e negativos em vermelho, igual ao modelo original.
 
 ### Gerando para um novo período (ex: 9M/2026)
 
-Basta trocar `--months` e `--label`:
+Troque `--months` e `--label`, e **reexporte a DRE do Atacado do Lynkz para
+o novo período** (o arquivo do Atacado já vem totalizado, então não dá para
+recalcular outro intervalo de meses a partir do mesmo arquivo — diferente
+da DRE Banco, que é mensal e permite qualquer recorte):
 
 ```bash
 python3 scripts/generate_dre_report.py \
   --file data/DRE_Aberta_Mensal.xlsx \
+  --atacado-file data/DRE_Atacado_9M.xlsx \
   --year 2026 --months 1-9 \
   --compare-year 2025 --compare-months 1-9 \
   --label "9 M/2026" \
@@ -81,6 +92,6 @@ pip install openpyxl
 
 ```
 scripts/generate_dre_report.py   # gerador do relatório
-data/                             # coloque aqui o .xlsx exportado (não versionado)
+data/                             # coloque aqui os .xlsx exportados (não versionado)
 reports/                          # relatórios .html gerados
 ```
