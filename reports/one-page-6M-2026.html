@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>One Page - 6 M/2026</title>
+<style>
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    margin: 0;
+    padding: 24px;
+    background: #ffffff;
+    color: #1a1a1a;
+  }
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    border: 1px solid #d9e5dd;
+  }
+  .title-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(90deg, #1f5c3f 0%, #3f8f68 55%, #bfe3cf 100%);
+    color: #ffffff;
+    padding: 14px 24px;
+  }
+  .title-bar .badge {
+    background: #17442e;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 20px;
+    border-radius: 4px;
+  }
+  .title-bar .title {
+    font-size: 24px;
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  .period-bar {
+    background: #eef7f0;
+    padding: 10px 24px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #1a1a1a;
+  }
+  .segments {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 24px;
+  }
+  .segment-header {
+    background: #b7e3c9;
+    color: #1a1a1a;
+    text-align: center;
+    font-weight: bold;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .segment-body {
+    background: #f4f4f4;
+    border-radius: 6px;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .metric {
+    text-align: center;
+  }
+  .metric-title {
+    font-weight: bold;
+    font-size: 14px;
+  }
+  .metric-sub {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .positive { color: #2e7d32; }
+  .negative { color: #c00000; }
+  .neutral  { color: #1a1a1a; }
+  .segment-note {
+    margin-top: 10px;
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    background: #ffffff;
+    text-align: center;
+  }
+  .generated-at {
+    text-align: right;
+    font-size: 10px;
+    color: #888;
+    padding: 0 24px 16px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="title-bar">
+    <div class="badge">3</div>
+    <div class="title">One Page</div>
+  </div>
+  <div class="period-bar">6 M/2026</div>
+  <div class="segments">
+    
+    <div class="segment">
+      <div class="segment-header">Consolidado</div>
+      <div class="segment-body">
+        <div class="metric">
+          <div class="metric-title">RECEITA BRUTA: R$ 91,3MM</div>
+          <div class="metric-sub positive">+0,1% | +R$ 0,1MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">LUCRO BRUTO AJUSTADO: R$ 34,1MM</div>
+          <div class="metric-sub negative">-3,1% | -R$ 1,1MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM BRUTA: 42,9%</div>
+          <div class="metric-sub negative">-1,8 p.p. vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">EBITDA: R$ 0,3MM</div>
+          <div class="metric-sub positive">+112,0% | +R$ 2,7MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM EBITDA: 0,4%</div>
+          <div class="metric-sub positive">+3,4 p.p. vs 6M/2025</div>
+        </div>
+      </div>
+      
+    </div>
+    
+    
+    <div class="segment">
+      <div class="segment-header">Varejo</div>
+      <div class="segment-body">
+        <div class="metric">
+          <div class="metric-title">RECEITA BRUTA: R$ 73,1MM</div>
+          <div class="metric-sub positive">+1,0% | +R$ 0,7MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">LUCRO BRUTO AJUSTADO: R$ 26,1MM</div>
+          <div class="metric-sub negative">-6,3% | -R$ 1,8MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM BRUTA: 43,2%</div>
+          <div class="metric-sub negative">-3,9 p.p. vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">EBITDA: R$ 9,2MM</div>
+          <div class="metric-sub negative">-3,3% | -R$ 0,3MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM EBITDA: 15,3%</div>
+          <div class="metric-sub negative">-0,9 p.p. vs 6M/2025</div>
+        </div>
+      </div>
+      
+    </div>
+    
+    
+    <div class="segment">
+      <div class="segment-header">Atacado</div>
+      <div class="segment-body">
+        <div class="metric">
+          <div class="metric-title">RECEITA BRUTA: R$ 18,1MM</div>
+          <div class="metric-sub negative">-3,6% | -R$ 0,7MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">LUCRO BRUTO AJUSTADO: R$ 8,2MM</div>
+          <div class="metric-sub negative">-1,2% | -R$ 0,1MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM BRUTA: 42,9%</div>
+          <div class="metric-sub positive">+0,6 p.p. vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">EBITDA: R$ 4,4MM</div>
+          <div class="metric-sub negative">-7,5% | -R$ 0,4MM vs 6M/2025</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">MARGEM EBITDA: 22,7%</div>
+          <div class="metric-sub negative">-1,2 p.p. vs 6M/2025</div>
+        </div>
+      </div>
+      <div class="segment-note">Atacado: Lynkz Gerencial Consolidado</div>
+    </div>
+    
+  </div>
+  <div class="generated-at">Gerado automaticamente a partir da planilha DRE Banco (Google Sheets)</div>
+</div>
+</body>
+</html>
