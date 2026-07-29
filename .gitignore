@@ -1,0 +1,4 @@
+data/*.xlsx
+data/*.xls
+data/*.csv
+!data/.gitkeep
