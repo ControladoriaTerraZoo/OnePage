@@ -30,8 +30,7 @@ main{max-width:1200px;margin:0 auto;padding:24px 20px 80px}
 select{background:var(--v6);border:1px solid var(--borda);color:var(--txt);font-size:12px;padding:6px 10px;border-radius:7px;font-family:inherit;cursor:pointer}
 select:focus{outline:none;border-color:var(--v3)}
 .page{border:1px solid var(--borda);border-radius:10px;overflow:hidden}
-.title-bar{display:flex;align-items:center;gap:20px;background:linear-gradient(90deg,var(--v1) 0%,var(--v2) 55%,var(--v5) 100%);color:#fff;padding:14px 24px}
-.title-bar .badge{background:#17442e;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;border-radius:4px}
+.title-bar{display:flex;align-items:center;background:linear-gradient(90deg,var(--v1) 0%,var(--v2) 55%,var(--v5) 100%);color:#fff;padding:14px 24px}
 .title-bar .title{font-size:24px;font-weight:bold;text-decoration:underline}
 .period-bar{background:var(--v6);padding:10px 24px;font-size:20px;font-weight:bold;color:var(--txt)}
 .segments{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px}
@@ -116,7 +115,6 @@ footer{background:var(--v1);padding:16px 32px;display:flex;align-items:center;ju
 
   <div class="page">
     <div class="title-bar">
-      <div class="badge">3</div>
       <div class="title">One Page</div>
     </div>
     <div class="period-bar" id="periodoLbl"></div>
@@ -244,19 +242,21 @@ function renderSegmento(nome, curr, prev, compareLabel, nota) {
     const txt = pct === null ? 'n/a' : fmtPct(pct);
     return txt + ' | ' + fmtMoneyDelta(delta) + ' vs ' + compareLabel;
   };
+  // Valor absoluto em R$/% negativo também fica vermelho (não só a variação).
+  const negClass = function (v) { return v < 0 ? ' negative' : ''; };
 
   return '<div class="segment">' +
     '<div class="segment-header">' + nome + '</div>' +
     '<div class="segment-body">' +
-      '<div class="metric"><div class="metric-title">RECEITA BRUTA: ' + fmtMoney(curr.receita_bruta) + '</div>' +
+      '<div class="metric"><div class="metric-title' + negClass(curr.receita_bruta) + '">RECEITA BRUTA: ' + fmtMoney(curr.receita_bruta) + '</div>' +
         '<div class="metric-sub ' + colorFor(rbPct) + '">' + pctLine(rbPct, rbDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title">LUCRO BRUTO AJUSTADO: ' + fmtMoney(curr.lucro_bruto_ajustado) + '</div>' +
+      '<div class="metric"><div class="metric-title' + negClass(curr.lucro_bruto_ajustado) + '">LUCRO BRUTO AJUSTADO: ' + fmtMoney(curr.lucro_bruto_ajustado) + '</div>' +
         '<div class="metric-sub ' + colorFor(lbaPct) + '">' + pctLine(lbaPct, lbaDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title">MARGEM BRUTA: ' + (curr.margem_bruta * 100).toFixed(1).replace('.', ',') + '%</div>' +
+      '<div class="metric"><div class="metric-title' + negClass(curr.margem_bruta) + '">MARGEM BRUTA: ' + (curr.margem_bruta * 100).toFixed(1).replace('.', ',') + '%</div>' +
         '<div class="metric-sub ' + colorFor(mbPp) + '">' + fmtPp(mbPp) + ' vs ' + compareLabel + '</div></div>' +
-      '<div class="metric"><div class="metric-title">EBITDA: ' + fmtMoney(curr.ebitda) + '</div>' +
+      '<div class="metric"><div class="metric-title' + negClass(curr.ebitda) + '">EBITDA: ' + fmtMoney(curr.ebitda) + '</div>' +
         '<div class="metric-sub ' + colorFor(ebitdaPct) + '">' + pctLine(ebitdaPct, ebitdaDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title">MARGEM EBITDA: ' + (curr.margem_ebitda * 100).toFixed(1).replace('.', ',') + '%</div>' +
+      '<div class="metric"><div class="metric-title' + negClass(curr.margem_ebitda) + '">MARGEM EBITDA: ' + (curr.margem_ebitda * 100).toFixed(1).replace('.', ',') + '%</div>' +
         '<div class="metric-sub ' + colorFor(mePp) + '">' + fmtPp(mePp) + ' vs ' + compareLabel + '</div></div>' +
     '</div>' +
     (nota ? '<div class="segment-note">' + nota + '</div>' : '') +
