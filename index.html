@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TerraZoo — One Page</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Calibri:wght@300;400;600&display=swap');
+:root{
+  --v1:#1a2e1f;--v2:#2E7D32;--v3:#4CAF50;--v4:#A5D6A7;--v5:#b2dfc4;--v6:#E8F5E9;
+  --txt:#111;--muted:#555;--borda:#C8E6C9;--fundo:#fff;
+  --red:#9C0006;--green:#2E7D32;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Calibri','Segoe UI',sans-serif;background:#fff;color:var(--txt);min-height:100vh;font-size:13px}
+header{background:var(--v1);height:64px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.logo{font-size:22px;font-weight:600;color:#fff}.logo span{color:var(--v4)}
+.header-right{display:flex;align-items:center;gap:12px}
+.btn-back{font-size:12px;color:var(--v4);background:none;border:1px solid rgba(165,214,167,.3);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;text-decoration:none;transition:all .2s}
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.spinner{width:36px;height:36px;border:3px solid var(--borda);border-top-color:var(--v2);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#error-box{display:none;max-width:500px;margin:80px auto;padding:32px;background:#fff3f3;border:1px solid #ffcdd2;border-radius:12px;text-align:center}
+.error-title{font-size:18px;font-weight:600;color:var(--red);margin-bottom:8px}
+.error-msg{font-size:13px;color:#666;line-height:1.6}
+main{max-width:1200px;margin:0 auto;padding:24px 20px 80px}
+.filtros-bar{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.filtro-group{display:flex;align-items:center;gap:8px}
+.filtro-label{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+select{background:var(--v6);border:1px solid var(--borda);color:var(--txt);font-size:12px;padding:6px 10px;border-radius:7px;font-family:inherit;cursor:pointer}
+select:focus{outline:none;border-color:var(--v3)}
+.page{border:1px solid var(--borda);border-radius:10px;overflow:hidden}
+.title-bar{display:flex;align-items:center;gap:20px;background:linear-gradient(90deg,var(--v1) 0%,var(--v2) 55%,var(--v5) 100%);color:#fff;padding:14px 24px}
+.title-bar .badge{background:#17442e;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;border-radius:4px}
+.title-bar .title{font-size:24px;font-weight:bold;text-decoration:underline}
+.period-bar{background:var(--v6);padding:10px 24px;font-size:20px;font-weight:bold;color:var(--txt)}
+.segments{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px}
+.segment-header{background:var(--v5);color:var(--txt);text-align:center;font-weight:bold;padding:8px;border-radius:6px;margin-bottom:12px}
+.segment-body{background:#f4f4f4;border-radius:6px;padding:18px 16px;display:flex;flex-direction:column;gap:16px}
+.metric{text-align:center}
+.metric-title{font-weight:bold;font-size:14px}
+.metric-sub{font-size:13px;margin-top:2px}
+.positive{color:var(--green)}
+.negative{color:var(--red)}
+.neutral{color:var(--txt)}
+.segment-note{margin-top:10px;border:1px solid #999;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:bold;background:#fff;text-align:center}
+.generated-at{text-align:right;font-size:10px;color:#888;padding:8px 24px 16px}
+@media(max-width:900px){.segments{grid-template-columns:1fr}}
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#2E7D32,#1a6b3c);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.login-card{background:#3a9150;border-radius:14px;padding:40px 44px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{text-align:center;font-size:30px;font-weight:700;color:#fff;letter-spacing:-1px}
+.login-logo span{color:#a5d6a7}
+.login-sub{text-align:center;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:4px}
+.login-divider{height:1px;background:rgba(255,255,255,.2);margin:20px 0}
+.login-title{text-align:center;font-size:17px;font-weight:600;color:#fff;margin-bottom:22px}
+.login-lbl{display:block;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:6px}
+.login-input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:8px;border:none;font-size:14px;font-family:inherit;margin-bottom:16px;background:#eef5ee;color:#111}
+.login-input-dark{background:rgba(0,0,0,.15);color:#fff}
+.login-input-dark::placeholder{color:rgba(255,255,255,.5)}
+.login-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#fff;margin-bottom:20px;cursor:pointer}
+.login-btn{width:100%;padding:13px;border:none;border-radius:8px;background:#fff;color:#2E7D32;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .2s}
+.login-btn:hover{opacity:.9}
+.login-btn:disabled{opacity:.6;cursor:wait}
+.login-erro{margin-top:14px;font-size:13px;color:#ffd5d5;text-align:center;min-height:18px}
+footer{background:var(--v1);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;margin-top:40px}
+.footer-logo{font-size:13px;font-weight:600;color:rgba(255,255,255,.4)}.footer-logo span{color:var(--v4)}
+.footer-info{font-size:11px;color:rgba(255,255,255,.25);letter-spacing:1px}
+</style>
+</head>
+<body>
+<!-- ══ TELA DE LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">terra<span>ZOO</span></div>
+    <div class="login-sub">One Page</div>
+    <div class="login-divider"></div>
+    <div class="login-title">Acesso ao Sistema</div>
+    <label class="login-lbl">Login</label>
+    <input type="email" id="loginEmail" class="login-input" placeholder="seu.email@terrazoo.com.br" autocomplete="username">
+    <label class="login-lbl">Senha</label>
+    <input type="password" id="loginSenha" class="login-input login-input-dark" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+    <label class="login-check"><input type="checkbox" id="loginLembrar" checked> Lembrar login</label>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div id="login-erro" class="login-erro"></div>
+  </div>
+</div>
+
+<div id="app-shell" style="display:none">
+<header>
+  <div class="logo">terra<span>ZOO</span></div>
+  <div class="header-right">
+    <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4)">One Page</span>
+    <span id="userLbl" style="font-size:12px;color:rgba(255,255,255,.7)"></span>
+    <button class="btn-back" onclick="logout()" style="cursor:pointer">Sair</button>
+  </div>
+</header>
+
+<div id="loading"><div class="spinner"></div><div style="font-size:14px;color:var(--muted)">Carregando dados...</div></div>
+<div id="error-box"><div class="error-title">Erro</div><div class="error-msg" id="error-msg"></div></div>
+
+<main id="main-content" style="display:none">
+  <div class="filtros-bar">
+    <div class="filtro-group">
+      <span class="filtro-label">Período</span>
+      <select id="selMeses"></select>
+    </div>
+    <div class="filtro-group">
+      <span class="filtro-label">Ano</span>
+      <select id="selAno"></select>
+    </div>
+    <div class="filtro-group">
+      <span class="filtro-label">Comparar com</span>
+      <select id="selAnoComp"></select>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="title-bar">
+      <div class="badge">3</div>
+      <div class="title">One Page</div>
+    </div>
+    <div class="period-bar" id="periodoLbl"></div>
+    <div class="segments" id="segments"></div>
+    <div class="generated-at" id="geradoEm"></div>
+  </div>
+</main>
+</div><!-- /app-shell -->
+
+<footer>
+  <div class="footer-logo">terra<span>ZOO</span></div>
+  <div class="footer-info">ONE PAGE · TERRAZOO</div>
+</footer>
+
+<script>
+// ══ Config da API (Google Apps Script publicado a partir da DRE Banco) ══
+const API_URL = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT_/exec';
+const CHAVE_ACESSO = '1130e0d6d3f33367e5d75519fd5827ba887bc46524426a33';
+
+const METRICAS = ['receita_bruta', 'receita_liquida', 'lucro_bruto_ajustado', 'ebitda'];
+const NOME_METRICA = {
+  receita_bruta: 'Receita Bruta',
+  receita_liquida: 'Receita Líquida',
+  lucro_bruto_ajustado: 'Lucro Bruto Ajustado',
+  ebitda: 'EBITDA',
+};
+// aba/coluna DRE -> chave interna
+const CHAVE_DRE = {
+  'Receita Bruta': 'receita_bruta',
+  'Receita Líquida': 'receita_liquida',
+  'Lucro Bruto Ajustado': 'lucro_bruto_ajustado',
+  'EBITDA': 'ebitda',
+};
+
+let DRE_BANCO = [];
+let ATACADO = { header: [], rows: [] };
+let _USUARIOS = [];
+let _payloadCache = null;
+
+// ── Formatação pt-BR ──
+function fmtMoney(v) {
+  const mm = v / 1e6;
+  const sign = mm < 0 ? '-' : '';
+  return sign + 'R$ ' + Math.abs(mm).toFixed(1).replace('.', ',') + 'MM';
+}
+function fmtMoneyDelta(v) {
+  const sign = v >= 0 ? '+' : '-';
+  const abs = Math.abs(v);
+  if (abs < 50000) return sign + 'R$ ' + (abs / 1e3).toFixed(1).replace('.', ',') + 'K';
+  return sign + 'R$ ' + (abs / 1e6).toFixed(1).replace('.', ',') + 'MM';
+}
+function fmtPct(v) {
+  const sign = v >= 0 ? '+' : '-';
+  return sign + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + '%';
+}
+function fmtPp(v) {
+  const sign = v >= 0 ? '+' : '-';
+  return sign + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' p.p.';
+}
+function colorFor(v) {
+  if (v === null || v === undefined || isNaN(v)) return 'neutral';
+  if (v > 1e-9) return 'positive';
+  if (v < -1e-9) return 'negative';
+  return 'neutral';
+}
+
+// ── Cálculo Consolidado / Varejo (a partir do DRE Banco pré-agregado) ──
+function calcSegmentoBanco(ano, meses, canais) {
+  const soma = { receita_bruta: 0, receita_liquida: 0, lucro_bruto_ajustado: 0, ebitda: 0 };
+  DRE_BANCO.forEach(function (r) {
+    if (r.ano !== ano) return;
+    if (meses.indexOf(r.mes) === -1) return;
+    if (canais && canais.indexOf(r.canal) === -1) return;
+    const chave = CHAVE_DRE[r.metrica];
+    if (!chave) return;
+    soma[chave] += r.valor;
+  });
+  return _finalizar(soma);
+}
+
+function _finalizar(v) {
+  v.margem_bruta = v.receita_liquida ? v.lucro_bruto_ajustado / v.receita_liquida : 0;
+  v.margem_ebitda = v.receita_liquida ? v.ebitda / v.receita_liquida : 0;
+  return v;
+}
+
+// ── Cálculo Atacado (a partir da aba Atacado / Lynkz Gerencial Consolidado) ──
+function _acharColuna(header, ano) {
+  for (let i = 0; i < header.length; i++) {
+    const texto = String(header[i] || '').toUpperCase().replace(/\s/g, '');
+    if (texto.indexOf('REAL') >= 0 && texto.indexOf(String(ano)) >= 0) return i;
+  }
+  return -1;
+}
+
+function calcSegmentoAtacado(ano) {
+  const col = _acharColuna(ATACADO.header, ano);
+  const soma = { receita_bruta: 0, receita_liquida: 0, lucro_bruto_ajustado: 0, ebitda: 0 };
+  if (col === -1) return { valores: null, disponivel: false };
+  ATACADO.rows.forEach(function (row) {
+    const label = String(row[0] || '').trim();
+    const chave = CHAVE_DRE[label];
+    if (!chave) return;
+    soma[chave] = Number(row[col]) || 0;
+  });
+  return { valores: _finalizar(soma), disponivel: true };
+}
+
+// ── Renderização de um card ──
+function renderSegmento(nome, curr, prev, compareLabel, nota) {
+  if (!curr) {
+    return '<div class="segment"><div class="segment-header">' + nome + '</div>' +
+      '<div class="segment-body"><div class="metric-sub neutral">Sem dados do Atacado para este período.<br>Atualize a aba "Atacado" na planilha.</div></div></div>';
+  }
+  const rbDelta = curr.receita_bruta - prev.receita_bruta;
+  const rbPct = prev.receita_bruta ? rbDelta / Math.abs(prev.receita_bruta) : null;
+  const lbaDelta = curr.lucro_bruto_ajustado - prev.lucro_bruto_ajustado;
+  const lbaPct = prev.lucro_bruto_ajustado ? lbaDelta / Math.abs(prev.lucro_bruto_ajustado) : null;
+  const mbPp = curr.margem_bruta - prev.margem_bruta;
+  const ebitdaDelta = curr.ebitda - prev.ebitda;
+  const ebitdaPct = prev.ebitda ? ebitdaDelta / Math.abs(prev.ebitda) : null;
+  const mePp = curr.margem_ebitda - prev.margem_ebitda;
+
+  const pctLine = function (pct, delta) {
+    const txt = pct === null ? 'n/a' : fmtPct(pct);
+    return txt + ' | ' + fmtMoneyDelta(delta) + ' vs ' + compareLabel;
+  };
+
+  return '<div class="segment">' +
+    '<div class="segment-header">' + nome + '</div>' +
+    '<div class="segment-body">' +
+      '<div class="metric"><div class="metric-title">RECEITA BRUTA: ' + fmtMoney(curr.receita_bruta) + '</div>' +
+        '<div class="metric-sub ' + colorFor(rbPct) + '">' + pctLine(rbPct, rbDelta) + '</div></div>' +
+      '<div class="metric"><div class="metric-title">LUCRO BRUTO AJUSTADO: ' + fmtMoney(curr.lucro_bruto_ajustado) + '</div>' +
+        '<div class="metric-sub ' + colorFor(lbaPct) + '">' + pctLine(lbaPct, lbaDelta) + '</div></div>' +
+      '<div class="metric"><div class="metric-title">MARGEM BRUTA: ' + (curr.margem_bruta * 100).toFixed(1).replace('.', ',') + '%</div>' +
+        '<div class="metric-sub ' + colorFor(mbPp) + '">' + fmtPp(mbPp) + ' vs ' + compareLabel + '</div></div>' +
+      '<div class="metric"><div class="metric-title">EBITDA: ' + fmtMoney(curr.ebitda) + '</div>' +
+        '<div class="metric-sub ' + colorFor(ebitdaPct) + '">' + pctLine(ebitdaPct, ebitdaDelta) + '</div></div>' +
+      '<div class="metric"><div class="metric-title">MARGEM EBITDA: ' + (curr.margem_ebitda * 100).toFixed(1).replace('.', ',') + '%</div>' +
+        '<div class="metric-sub ' + colorFor(mePp) + '">' + fmtPp(mePp) + ' vs ' + compareLabel + '</div></div>' +
+    '</div>' +
+    (nota ? '<div class="segment-note">' + nota + '</div>' : '') +
+  '</div>';
+}
+
+// ── Monta os seletores de período a partir dos dados carregados ──
+function popularFiltros() {
+  const anos = Array.from(new Set(DRE_BANCO.map(function (r) { return r.ano; }))).sort(function (a, b) { return b - a; });
+  const selAno = document.getElementById('selAno');
+  const selAnoComp = document.getElementById('selAnoComp');
+  selAno.innerHTML = anos.map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  selAnoComp.innerHTML = anos.map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  selAnoComp.value = anos.length > 1 ? anos[1] : anos[0];
+
+  const maxMes = Math.max.apply(null, DRE_BANCO.filter(function (r) { return r.ano === anos[0]; }).map(function (r) { return r.mes; }).concat([1]));
+  const selMeses = document.getElementById('selMeses');
+  const opcoes = [];
+  for (let n = 1; n <= maxMes; n++) opcoes.push(n);
+  selMeses.innerHTML = opcoes.map(function (n) { return '<option value="' + n + '">' + n + ' M</option>'; }).join('');
+  selMeses.value = String(maxMes);
+
+  [selAno, selAnoComp, selMeses].forEach(function (el) { el.onchange = renderTudo; });
+}
+
+function renderTudo() {
+  const ano = Number(document.getElementById('selAno').value);
+  const anoComp = Number(document.getElementById('selAnoComp').value);
+  const nMeses = Number(document.getElementById('selMeses').value);
+  const meses = [];
+  for (let m = 1; m <= nMeses; m++) meses.push(m);
+
+  const label = nMeses + ' M/' + ano;
+  const compareLabel = nMeses + 'M/' + anoComp;
+  document.getElementById('periodoLbl').textContent = label;
+
+  const consolCurr = calcSegmentoBanco(ano, meses, null);
+  const consolPrev = calcSegmentoBanco(anoComp, meses, null);
+  const varejoCurr = calcSegmentoBanco(ano, meses, ['VAREJO']);
+  const varejoPrev = calcSegmentoBanco(anoComp, meses, ['VAREJO']);
+  const atCurr = calcSegmentoAtacado(ano);
+  const atPrev = calcSegmentoAtacado(anoComp);
+
+  const html =
+    renderSegmento('Consolidado', consolCurr, consolPrev, compareLabel, '') +
+    renderSegmento('Varejo', varejoCurr, varejoPrev, compareLabel, '') +
+    (atCurr.disponivel && atPrev.disponivel
+      ? renderSegmento('Atacado', atCurr.valores, atPrev.valores, compareLabel, 'Atacado: Lynkz Gerencial Consolidado')
+      : renderSegmento('Atacado', null, null, compareLabel, ''));
+
+  document.getElementById('segments').innerHTML = html;
+  document.getElementById('geradoEm').textContent = 'Atualizado ao vivo a partir da DRE Banco (Google Sheets)';
+}
+
+// ══ Autenticação (mesmo modelo do Forecast 2026 / Painel de Tarefas) ══
+async function _carregarBackend() {
+  const url = API_URL + '?chave=' + encodeURIComponent(CHAVE_ACESSO);
+  const resp = await fetch(url, { method: 'GET' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json();
+  if (data.status !== 'ok') throw new Error(data.message || 'Falha no backend');
+  return data;
+}
+
+async function fazerLogin() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const senha = document.getElementById('loginSenha').value;
+  const erro = document.getElementById('login-erro');
+  const btn = document.querySelector('.login-btn');
+  if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
+  erro.textContent = ''; btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    if (!_payloadCache) {
+      _payloadCache = await _carregarBackend();
+      _USUARIOS = _payloadCache.usuarios || [];
+    }
+    const u = _USUARIOS.find(function (x) { return (x.email || '').toLowerCase() === email; });
+    if (!u) { erro.textContent = 'E-mail não encontrado.'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+    if (u.ativo && ['sim', 's', 'true', '1', 'ativo', 'x'].indexOf(String(u.ativo).toLowerCase()) === -1) {
+      erro.textContent = 'Usuário inativo.'; btn.disabled = false; btn.textContent = 'Entrar'; return;
+    }
+    if (String(u.senha) !== String(senha)) { erro.textContent = 'Senha incorreta.'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+
+    if (document.getElementById('loginLembrar').checked) {
+      try { localStorage.setItem('op_login', email); } catch (_) {}
+    } else {
+      try { localStorage.removeItem('op_login'); } catch (_) {}
+    }
+    document.getElementById('userLbl').textContent = u.nome || email;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'block';
+    montarDados(_payloadCache);
+  } catch (e) {
+    console.error('Erro no login:', e);
+    erro.textContent = 'Erro de conexão: ' + (e && e.message ? e.message : 'falha desconhecida');
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+
+function logout() {
+  try { localStorage.removeItem('op_login'); } catch (_) {}
+  location.reload();
+}
+
+function montarDados(data) {
+  try {
+    DRE_BANCO = data.dreBanco || [];
+    ATACADO = data.atacado || { header: [], rows: [] };
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    popularFiltros();
+    renderTudo();
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-box').style.display = 'block';
+    document.getElementById('error-msg').textContent = 'Erro: ' + e.message;
+  }
+}
+
+(function () {
+  try {
+    const em = localStorage.getItem('op_login');
+    if (em) { document.getElementById('loginEmail').value = em; document.getElementById('loginSenha').focus(); }
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>
