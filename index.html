@@ -17,6 +17,9 @@ header{background:var(--v1);height:64px;padding:0 32px;display:flex;align-items:
 .logo{font-size:22px;font-weight:600;color:#fff}.logo span{color:var(--v4)}
 .header-right{display:flex;align-items:center;gap:12px}
 .btn-back{font-size:12px;color:var(--v4);background:none;border:1px solid rgba(165,214,167,.3);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;text-decoration:none;transition:all .2s}
+.btn-export{font-size:12px;color:#fff;background:var(--v2);border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;transition:background .2s}
+.btn-export:hover{background:var(--v3)}
+.btn-export:disabled{opacity:.6;cursor:wait}
 #loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
 .spinner{width:36px;height:36px;border:3px solid var(--borda);border-top-color:var(--v2);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -65,6 +68,7 @@ footer{background:var(--v1);padding:16px 32px;display:flex;align-items:center;ju
 .footer-logo{font-size:13px;font-weight:600;color:rgba(255,255,255,.4)}.footer-logo span{color:var(--v4)}
 .footer-info{font-size:11px;color:rgba(255,255,255,.25);letter-spacing:1px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 <body>
 <!-- ══ TELA DE LOGIN ══ -->
@@ -90,6 +94,7 @@ footer{background:var(--v1);padding:16px 32px;display:flex;align-items:center;ju
   <div class="header-right">
     <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4)">One Page</span>
     <span id="userLbl" style="font-size:12px;color:rgba(255,255,255,.7)"></span>
+    <button class="btn-export" id="btnExportarPPT" onclick="exportarPPT()">⬇ Baixar PPT</button>
     <button class="btn-back" onclick="logout()" style="cursor:pointer">Sair</button>
   </div>
 </header>
@@ -150,7 +155,7 @@ const CHAVE_DRE = {
 };
 
 let DRE_BANCO = [];
-let ATACADO = { header: [], rows: [] };
+let ATACADO = [];
 let _USUARIOS = [];
 let _payloadCache = null;
 
@@ -202,33 +207,31 @@ function _finalizar(v) {
 }
 
 // ── Cálculo Atacado (a partir da aba Atacado / Lynkz Gerencial Consolidado) ──
-function _acharColuna(header, ano) {
-  for (let i = 0; i < header.length; i++) {
-    const texto = String(header[i] || '').toUpperCase().replace(/\s/g, '');
-    if (texto.indexOf('REAL') >= 0 && texto.indexOf(String(ano)) >= 0) return i;
-  }
-  return -1;
+// Formato acumulativo: uma linha por Período x DRE. A cada fechamento
+// (6M, 7M, 8M...) cola-se um novo bloco de linhas embaixo; nada é
+// sobrescrito, então o histórico completo fica sempre na planilha.
+function _normPeriodo(s) {
+  return String(s || '').replace(/\s/g, '').toUpperCase();
 }
 
-function calcSegmentoAtacado(ano) {
-  const col = _acharColuna(ATACADO.header, ano);
+function calcSegmentoAtacado(labelPeriodo) {
+  const alvo = _normPeriodo(labelPeriodo);
   const soma = { receita_bruta: 0, receita_liquida: 0, lucro_bruto_ajustado: 0, ebitda: 0 };
-  if (col === -1) return { valores: null, disponivel: false };
-  ATACADO.rows.forEach(function (row) {
-    const label = String(row[0] || '').trim();
-    const chave = CHAVE_DRE[label];
+  let achou = false;
+  ATACADO.forEach(function (row) {
+    if (_normPeriodo(row.periodo) !== alvo) return;
+    const chave = CHAVE_DRE[row.dre];
     if (!chave) return;
-    soma[chave] = Number(row[col]) || 0;
+    soma[chave] = row.real;
+    achou = true;
   });
+  if (!achou) return { valores: null, disponivel: false };
   return { valores: _finalizar(soma), disponivel: true };
 }
 
-// ── Renderização de um card ──
-function renderSegmento(nome, curr, prev, compareLabel, nota) {
-  if (!curr) {
-    return '<div class="segment"><div class="segment-header">' + nome + '</div>' +
-      '<div class="segment-body"><div class="metric-sub neutral">Sem dados do Atacado para este período.<br>Atualize a aba "Atacado" na planilha.</div></div></div>';
-  }
+// ── Monta as 5 linhas de métrica (valor + variação) de um segmento ──
+// Usado tanto para montar o HTML quanto o PPT, pra não duplicar a lógica.
+function buildMetricLines(curr, prev, compareLabel) {
   const rbDelta = curr.receita_bruta - prev.receita_bruta;
   const rbPct = prev.receita_bruta ? rbDelta / Math.abs(prev.receita_bruta) : null;
   const lbaDelta = curr.lucro_bruto_ajustado - prev.lucro_bruto_ajustado;
@@ -242,28 +245,40 @@ function renderSegmento(nome, curr, prev, compareLabel, nota) {
     const txt = pct === null ? 'n/a' : fmtPct(pct);
     return txt + ' | ' + fmtMoneyDelta(delta) + ' vs ' + compareLabel;
   };
-  // Valor absoluto em R$/% negativo também fica vermelho (não só a variação).
-  const negClass = function (v) { return v < 0 ? ' negative' : ''; };
+
+  return [
+    { titulo: 'RECEITA BRUTA: ' + fmtMoney(curr.receita_bruta), neg: curr.receita_bruta < 0, sub: pctLine(rbPct, rbDelta), subCor: colorFor(rbPct) },
+    { titulo: 'LUCRO BRUTO AJUSTADO: ' + fmtMoney(curr.lucro_bruto_ajustado), neg: curr.lucro_bruto_ajustado < 0, sub: pctLine(lbaPct, lbaDelta), subCor: colorFor(lbaPct) },
+    { titulo: 'MARGEM BRUTA: ' + (curr.margem_bruta * 100).toFixed(1).replace('.', ',') + '%', neg: curr.margem_bruta < 0, sub: fmtPp(mbPp) + ' vs ' + compareLabel, subCor: colorFor(mbPp) },
+    { titulo: 'EBITDA: ' + fmtMoney(curr.ebitda), neg: curr.ebitda < 0, sub: pctLine(ebitdaPct, ebitdaDelta), subCor: colorFor(ebitdaPct) },
+    { titulo: 'MARGEM EBITDA: ' + (curr.margem_ebitda * 100).toFixed(1).replace('.', ',') + '%', neg: curr.margem_ebitda < 0, sub: fmtPp(mePp) + ' vs ' + compareLabel, subCor: colorFor(mePp) },
+  ];
+}
+
+// ── Renderização de um card ──
+function renderSegmento(nome, linhas, nota) {
+  if (!linhas) {
+    return '<div class="segment"><div class="segment-header">' + nome + '</div>' +
+      '<div class="segment-body"><div class="metric-sub neutral">Sem dados do Atacado para este período.<br>Cole o bloco desse período na aba "Atacado".</div></div></div>';
+  }
+  const metricsHtml = linhas.map(function (l) {
+    return '<div class="metric"><div class="metric-title' + (l.neg ? ' negative' : '') + '">' + l.titulo + '</div>' +
+      '<div class="metric-sub ' + l.subCor + '">' + l.sub + '</div></div>';
+  }).join('');
 
   return '<div class="segment">' +
     '<div class="segment-header">' + nome + '</div>' +
-    '<div class="segment-body">' +
-      '<div class="metric"><div class="metric-title' + negClass(curr.receita_bruta) + '">RECEITA BRUTA: ' + fmtMoney(curr.receita_bruta) + '</div>' +
-        '<div class="metric-sub ' + colorFor(rbPct) + '">' + pctLine(rbPct, rbDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title' + negClass(curr.lucro_bruto_ajustado) + '">LUCRO BRUTO AJUSTADO: ' + fmtMoney(curr.lucro_bruto_ajustado) + '</div>' +
-        '<div class="metric-sub ' + colorFor(lbaPct) + '">' + pctLine(lbaPct, lbaDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title' + negClass(curr.margem_bruta) + '">MARGEM BRUTA: ' + (curr.margem_bruta * 100).toFixed(1).replace('.', ',') + '%</div>' +
-        '<div class="metric-sub ' + colorFor(mbPp) + '">' + fmtPp(mbPp) + ' vs ' + compareLabel + '</div></div>' +
-      '<div class="metric"><div class="metric-title' + negClass(curr.ebitda) + '">EBITDA: ' + fmtMoney(curr.ebitda) + '</div>' +
-        '<div class="metric-sub ' + colorFor(ebitdaPct) + '">' + pctLine(ebitdaPct, ebitdaDelta) + '</div></div>' +
-      '<div class="metric"><div class="metric-title' + negClass(curr.margem_ebitda) + '">MARGEM EBITDA: ' + (curr.margem_ebitda * 100).toFixed(1).replace('.', ',') + '%</div>' +
-        '<div class="metric-sub ' + colorFor(mePp) + '">' + fmtPp(mePp) + ' vs ' + compareLabel + '</div></div>' +
-    '</div>' +
+    '<div class="segment-body">' + metricsHtml + '</div>' +
     (nota ? '<div class="segment-note">' + nota + '</div>' : '') +
   '</div>';
 }
 
 // ── Monta os seletores de período a partir dos dados carregados ──
+// O Atacado só existe a partir do fechamento de 6M (a empresa não fecha
+// relatório mensal de 1M a 5M), então o seletor de período nunca oferece
+// menos que 6M.
+const PERIODO_MINIMO = 6;
+
 function popularFiltros() {
   const anos = Array.from(new Set(DRE_BANCO.map(function (r) { return r.ano; }))).sort(function (a, b) { return b - a; });
   const selAno = document.getElementById('selAno');
@@ -272,15 +287,17 @@ function popularFiltros() {
   selAnoComp.innerHTML = anos.map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
   selAnoComp.value = anos.length > 1 ? anos[1] : anos[0];
 
-  const maxMes = Math.max.apply(null, DRE_BANCO.filter(function (r) { return r.ano === anos[0]; }).map(function (r) { return r.mes; }).concat([1]));
+  const maxMes = Math.max.apply(null, DRE_BANCO.filter(function (r) { return r.ano === anos[0]; }).map(function (r) { return r.mes; }).concat([PERIODO_MINIMO]));
   const selMeses = document.getElementById('selMeses');
   const opcoes = [];
-  for (let n = 1; n <= maxMes; n++) opcoes.push(n);
+  for (let n = PERIODO_MINIMO; n <= Math.max(PERIODO_MINIMO, maxMes); n++) opcoes.push(n);
   selMeses.innerHTML = opcoes.map(function (n) { return '<option value="' + n + '">' + n + ' M</option>'; }).join('');
-  selMeses.value = String(maxMes);
+  selMeses.value = String(Math.max(PERIODO_MINIMO, maxMes));
 
   [selAno, selAnoComp, selMeses].forEach(function (el) { el.onchange = renderTudo; });
 }
+
+let _ULTIMO_RENDER = null; // guarda o último cálculo pra reaproveitar no export PPT
 
 function renderTudo() {
   const ano = Number(document.getElementById('selAno').value);
@@ -297,18 +314,90 @@ function renderTudo() {
   const consolPrev = calcSegmentoBanco(anoComp, meses, null);
   const varejoCurr = calcSegmentoBanco(ano, meses, ['VAREJO']);
   const varejoPrev = calcSegmentoBanco(anoComp, meses, ['VAREJO']);
-  const atCurr = calcSegmentoAtacado(ano);
-  const atPrev = calcSegmentoAtacado(anoComp);
+  const atCurr = calcSegmentoAtacado(nMeses + 'M/' + ano);
+  const atPrev = calcSegmentoAtacado(nMeses + 'M/' + anoComp);
+  const atDisponivel = atCurr.disponivel && atPrev.disponivel;
 
-  const html =
-    renderSegmento('Consolidado', consolCurr, consolPrev, compareLabel, '') +
-    renderSegmento('Varejo', varejoCurr, varejoPrev, compareLabel, '') +
-    (atCurr.disponivel && atPrev.disponivel
-      ? renderSegmento('Atacado', atCurr.valores, atPrev.valores, compareLabel, 'Atacado: Lynkz Gerencial Consolidado')
-      : renderSegmento('Atacado', null, null, compareLabel, ''));
+  const segmentos = [
+    { nome: 'Consolidado', linhas: buildMetricLines(consolCurr, consolPrev, compareLabel), nota: '' },
+    { nome: 'Varejo', linhas: buildMetricLines(varejoCurr, varejoPrev, compareLabel), nota: '' },
+    { nome: 'Atacado', linhas: atDisponivel ? buildMetricLines(atCurr.valores, atPrev.valores, compareLabel) : null, nota: 'Atacado: Lynkz Gerencial Consolidado' },
+  ];
 
-  document.getElementById('segments').innerHTML = html;
+  document.getElementById('segments').innerHTML = segmentos.map(function (s) { return renderSegmento(s.nome, s.linhas, s.nota); }).join('');
   document.getElementById('geradoEm').textContent = 'Atualizado ao vivo a partir da DRE Banco (Google Sheets)';
+
+  _ULTIMO_RENDER = { label: label, segmentos: segmentos };
+}
+
+// ── Exporta o One Page atual como slide PPTX editável (PptxGenJS, client-side) ──
+const COR_HEX = { positive: '2E7D32', negative: '9C0006', neutral: '111111' };
+
+async function exportarPPT() {
+  if (!_ULTIMO_RENDER) return;
+  if (typeof PptxGenJS === 'undefined') {
+    alert('Não consegui carregar a biblioteca de exportação (PptxGenJS). Verifique sua conexão com a internet e tente de novo.');
+    return;
+  }
+  const btn = document.getElementById('btnExportarPPT');
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Gerando...';
+  try {
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'ONEPAGE', width: 13.33, height: 7.5 });
+    pptx.layout = 'ONEPAGE';
+    const slide = pptx.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Barra de título
+    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 0.9, fill: { color: '1A2E1F' } });
+    slide.addText('One Page', { x: 0.4, y: 0.1, w: 6, h: 0.7, fontSize: 28, bold: true, underline: true, color: 'FFFFFF', fontFace: 'Calibri', valign: 'middle' });
+
+    // Barra de período
+    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0.9, w: 13.33, h: 0.55, fill: { color: 'E8F5E9' } });
+    slide.addText(_ULTIMO_RENDER.label, { x: 0.4, y: 0.9, w: 6, h: 0.55, fontSize: 18, bold: true, color: '111111', fontFace: 'Calibri', valign: 'middle' });
+
+    // Cards
+    const colW = 4.1, gap = 0.26, startX = 0.4, startY = 1.75, cardH = 4.6;
+    _ULTIMO_RENDER.segmentos.forEach(function (seg, idx) {
+      const x = startX + idx * (colW + gap);
+
+      slide.addShape(pptx.ShapeType.roundRect, { x: x, y: startY, w: colW, h: 0.5, fill: { color: 'B7E3C9' }, rectRadius: 0.06, line: { type: 'none' } });
+      slide.addText(seg.nome, { x: x, y: startY, w: colW, h: 0.5, align: 'center', valign: 'middle', bold: true, fontSize: 14, color: '111111', fontFace: 'Calibri' });
+
+      const bodyY = startY + 0.62;
+      slide.addShape(pptx.ShapeType.roundRect, { x: x, y: bodyY, w: colW, h: cardH, fill: { color: 'F4F4F4' }, rectRadius: 0.06, line: { type: 'none' } });
+
+      if (!seg.linhas) {
+        slide.addText('Sem dados do Atacado para este período.', { x: x + 0.15, y: bodyY + 0.2, w: colW - 0.3, h: 1, fontSize: 11, color: '555555', fontFace: 'Calibri', align: 'center' });
+        return;
+      }
+
+      const runs = [];
+      seg.linhas.forEach(function (l, i) {
+        runs.push({ text: l.titulo, options: { bold: true, fontSize: 12, color: l.neg ? COR_HEX.negative : '111111', breakLine: true } });
+        runs.push({ text: l.sub, options: { fontSize: 10.5, color: COR_HEX[l.subCor] || '111111', breakLine: i < seg.linhas.length - 1 } });
+        if (i < seg.linhas.length - 1) runs.push({ text: '', options: { fontSize: 6, breakLine: true } });
+      });
+      slide.addText(runs, { x: x + 0.15, y: bodyY + 0.15, w: colW - 0.3, h: cardH - 0.3, align: 'center', fontFace: 'Calibri', valign: 'top' });
+
+      if (seg.nota) {
+        slide.addShape(pptx.ShapeType.rect, { x: x, y: bodyY + cardH + 0.1, w: colW, h: 0.35, fill: { color: 'FFFFFF' }, line: { color: '999999', width: 1 } });
+        slide.addText(seg.nota, { x: x, y: bodyY + cardH + 0.1, w: colW, h: 0.35, align: 'center', valign: 'middle', fontSize: 9, bold: true, color: '111111', fontFace: 'Calibri' });
+      }
+    });
+
+    slide.addText('Gerado a partir da DRE Banco (Google Sheets)', { x: 0.4, y: 7.15, w: 12.5, h: 0.3, align: 'right', fontSize: 8, color: '888888', fontFace: 'Calibri' });
+
+    await pptx.writeFile({ fileName: 'OnePage_' + _ULTIMO_RENDER.label.replace(/\s+/g, '').replace(/\//g, '_') + '.pptx' });
+  } catch (e) {
+    console.error('Erro ao gerar PPT:', e);
+    alert('Erro ao gerar o PPT: ' + (e && e.message ? e.message : 'falha desconhecida'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 // ══ Autenticação (mesmo modelo do Forecast 2026 / Painel de Tarefas) ══
@@ -364,7 +453,7 @@ function logout() {
 function montarDados(data) {
   try {
     DRE_BANCO = data.dreBanco || [];
-    ATACADO = data.atacado || { header: [], rows: [] };
+    ATACADO = data.atacado || [];
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
     popularFiltros();
